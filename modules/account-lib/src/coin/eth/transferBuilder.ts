@@ -131,6 +131,8 @@ export class TransferBuilder {
    */
   private getOperationHash(): string {
     const operationData = this.getOperationData();
+    // TODO - install proper types for ethereumjs-abi
+    // @ts-ignore
     return ethUtil.bufferToHex(EthereumAbi.soliditySHA3(...operationData));
   }
 
