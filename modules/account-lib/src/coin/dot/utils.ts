@@ -168,11 +168,23 @@ export class Utils implements BaseUtils {
       .sign(pair);
 
     // Serialize a signed transaction.
-    const txHex = construct.signedTx(transaction, signature, {
+    return this.serializeSignedTransaction(transaction, signature, metadataRpc, registry);
+  }
+
+  /**
+   * Serializes the signed transaction
+   *
+   * @param transaction Transaction to serialize
+   * @param signature Signature of the message
+   * @param metadataRpc Network metadata
+   * @param registry Transaction registry
+   * @returns string Serialized transaction
+   */
+  serializeSignedTransaction(transaction, signature, metadataRpc: `0x${string}`, registry): string {
+    return construct.signedTx(transaction, signature, {
       metadataRpc,
       registry,
     });
-    return txHex;
   }
 
   /**
@@ -230,6 +242,14 @@ export class Utils implements BaseUtils {
 
   isTransfer(arg: TxMethod['args']): arg is TransferArgs {
     return (arg as TransferArgs).dest?.id !== undefined && (arg as TransferArgs).value !== undefined;
+  }
+
+  recoverSignatureFromRawTx(rawTx: string, options: { registry: TypeRegistry }): any {
+    const { registry } = options;
+    const methodCall = registry.createType('Extrinsic', rawTx, {
+      isSigned: true,
+    });
+    return u8aToHex(methodCall.signature).replace('0x', '0x00');
   }
 }
 

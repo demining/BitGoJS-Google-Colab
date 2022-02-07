@@ -18,6 +18,7 @@ import { default as utils } from './utils';
 export abstract class TransactionBuilder extends BaseTransactionBuilder {
   protected _transaction: Transaction;
   protected _keyPair: KeyPair;
+  protected _signature?: string;
   protected _sender: string;
 
   protected _blockNumber: number;
@@ -184,6 +185,7 @@ export abstract class TransactionBuilder extends BaseTransactionBuilder {
       this.referenceBlock(decodedTxn.blockHash);
     } else {
       this.sender({ address: utils.decodeDotAddress(decodedTxn.address) });
+      this._signature = utils.recoverSignatureFromRawTx(rawTransaction, { registry: this._registry });
     }
     this.validity({ maxDuration: decodedTxn.eraPeriod });
     this.sequenceId({
@@ -206,6 +208,8 @@ export abstract class TransactionBuilder extends BaseTransactionBuilder {
     this.transaction.chainName(this._material.chainName);
     if (this._keyPair) {
       this.transaction.sign(this._keyPair);
+    } else if (this._signature) {
+      this.transaction.addSignature(this._signature);
     }
     this._transaction.loadInputsAndOutputs();
     return this._transaction;
