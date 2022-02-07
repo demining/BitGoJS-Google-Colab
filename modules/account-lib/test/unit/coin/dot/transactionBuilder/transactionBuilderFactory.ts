@@ -24,7 +24,6 @@ describe('dot Transaction Builder Factory', () => {
   const factory = register('tdot', StubTransactionBuilderFactory).material(materialData as Material);
   const { rawTx } = dotResources;
   const sender = dotResources.accounts.account1;
-  const sender2 = dotResources.accounts.account3;
 
   [
     { type: 'transfer', builder: TransferBuilder },
@@ -52,9 +51,7 @@ describe('dot Transaction Builder Factory', () => {
 
       builder
         .validity({ firstValid: 3933 })
-        .referenceBlock('0x149799bc9602cb5cf201f3425fb8d253b2d4e61fc119dcab3249f307f594754d')
-        .sender({ address: sender.address })
-        .sign({ key: sender.secretKey });
+        .referenceBlock('0x149799bc9602cb5cf201f3425fb8d253b2d4e61fc119dcab3249f307f594754d');
       const tx = await builder.build();
       should.equal(tx.toBroadcastFormat(), rawTx[txn.type].signed);
     });
@@ -76,9 +73,7 @@ describe('dot Transaction Builder Factory', () => {
     should(builder).instanceOf(TransferBuilder);
     builder
       .validity({ firstValid: 3933, maxDuration: 64 })
-      .referenceBlock('0x149799bc9602cb5cf201f3425fb8d253b2d4e61fc119dcab3249f307f594754d')
-      .sender({ address: sender2.address })
-      .sign({ key: sender2.secretKey });
+      .referenceBlock('0x149799bc9602cb5cf201f3425fb8d253b2d4e61fc119dcab3249f307f594754d');
     const tx = await builder.build();
     should.equal(tx.toBroadcastFormat(), rawTx.proxy.signed);
   });
