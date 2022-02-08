@@ -1,8 +1,7 @@
 import { Blockhash, StakeInstructionType, SystemInstructionType, TransactionSignature } from '@solana/web3.js';
 import { InstructionBuilderTypes } from './constants';
-import { TransactionExplanation as BaseTransactionExplanation } from '../baseCoin/iface';
+import { SequenceId, TransactionExplanation as BaseTransactionExplanation } from '../baseCoin/iface';
 
-// TODO(STLX-9890): Add the interfaces for validityWindow and SequenceId
 export interface SolanaKeys {
   prv?: Uint8Array | string;
   pub: string;
@@ -86,4 +85,8 @@ export interface TransactionExplanation extends BaseTransactionExplanation {
   // only populated if blockhash is from a nonce account
   durableNonce?: DurableNonceParams;
   memo?: string;
+}
+
+export interface SolanaSequenceId extends SequenceId {
+  durableNonceAddress?: string;
 }

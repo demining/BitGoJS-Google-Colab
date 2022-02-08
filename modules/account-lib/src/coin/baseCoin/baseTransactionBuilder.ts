@@ -1,6 +1,6 @@
 import BigNumber from 'bignumber.js';
 import { BaseCoin as CoinConfig } from '@bitgo/statics';
-import { BaseAddress, BaseKey, PublicKey } from './iface';
+import { BaseAddress, BaseKey, PublicKey, ValidityWindow } from './iface';
 import { BaseTransaction } from './baseTransaction';
 import { SigningError } from './errors';
 
@@ -138,6 +138,34 @@ export abstract class BaseTransactionBuilder {
    */
   coinName(): string {
     return this._coinConfig.name;
+  }
+
+  /**
+   * Verified validity windows params if them exist and return a valid validity windows.
+   * @param {ValidityWindow} [params] optional validity windows parameter to validate.
+   * @returns {ValidityWindow} verified validity windows or default values
+   */
+  getValidityWindow?(params: ValidityWindow): ValidityWindow {
+    const size = 100000;
+    const window: ValidityWindow = params;
+
+    window.firstValid = window.firstValid ? window.firstValid : 0;
+    window.lastValid = window.lastValid ? window.lastValid : 0;
+    window.minDuration = window.minDuration ? window.minDuration : size;
+    window.maxDuration = window.maxDuration ? window.maxDuration : size;
+    window.unit = window.unit ? window.unit : 'blockheight';
+    if (window.minDuration > window.maxDuration) {
+      window.maxDuration = window.minDuration;
+    }
+    if (
+      window.lastValid <= window.firstValid ||
+      window.lastValid < window.firstValid + window.minDuration ||
+      window.lastValid >= window.firstValid + window.maxDuration ||
+      window.firstValid + window.minDuration > window.firstValid + window.maxDuration
+    ) {
+      window.lastValid = window.firstValid + window.minDuration;
+    }
+    return window;
   }
 
   /**
