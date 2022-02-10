@@ -414,14 +414,12 @@ describe('Bitgo Express', function () {
       };
 
       (() => expressApp(args)).should.throw({
-        name: 'ExternalSignerConfigError',
         message: 'signerMode and signerFileSystemPath must both be set in order to run in external signing mode.'
       });
 
       args.signerMode = undefined;
       args.signerFileSystemPath = 'signerFileSystemPath';
       (() => expressApp(args)).should.throw({
-        name: 'ExternalSignerConfigError',
         message: 'signerMode and signerFileSystemPath must both be set in order to run in external signing mode.'
       });
 
@@ -439,7 +437,6 @@ describe('Bitgo Express', function () {
         externalSignerUrl: 'externalSignerUrl',
       };
       (() => expressApp(args)).should.throw({
-        name: 'ExternalSignerConfigError',
         message: 'signerMode or signerFileSystemPath is set, but externalSignerUrl is also set.'
       });
 
@@ -474,7 +471,6 @@ describe('Bitgo Express', function () {
         signerFileSystemPath: 'signerFileSystemPath',
       };
       (() => expressApp(args)).should.throw({
-        name: 'ExternalSignerConfigError',
         message: 'external signer feature is only enabled for test mode.'
       });
 
@@ -482,7 +478,6 @@ describe('Bitgo Express', function () {
       args.signerFileSystemPath = undefined;
       args.externalSignerUrl = 'externalSignerUrl';
       (() => expressApp(args)).should.throw({
-        name: 'ExternalSignerConfigError',
         message: 'external signer feature is only enabled for test mode.'
       });
 

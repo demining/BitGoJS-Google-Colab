@@ -17,7 +17,7 @@ import { Config, config } from './config';
 const debug = debugLib('bitgo:express');
 
 import { SSL_OP_NO_TLSv1 } from 'constants';
-import { IpcError, NodeEnvironmentError, TlsConfigurationError, ExternalSignerConfigError } from './errors';
+import { IpcError, NodeEnvironmentError, TlsConfigurationError } from './errors';
 
 import { Environments } from 'bitgo';
 import * as clientRoutes from './clientRoutes';
@@ -218,19 +218,15 @@ function checkPreconditions(config: Config) {
   }
 
   if (env !== 'test' && (externalSignerUrl !== undefined || signerMode !== undefined)) {
-    throw new ExternalSignerConfigError('external signer feature is only enabled for test mode.');
+    throw new Error('external signer feature is only enabled for test mode.');
   }
 
   if (externalSignerUrl !== undefined && (signerMode !== undefined || signerFileSystemPath !== undefined)) {
-    throw new ExternalSignerConfigError(
-      'signerMode or signerFileSystemPath is set, but externalSignerUrl is also set.'
-    );
+    throw new Error('signerMode or signerFileSystemPath is set, but externalSignerUrl is also set.');
   }
 
   if ((signerMode !== undefined || signerFileSystemPath !== undefined) && !(signerMode && signerFileSystemPath)) {
-    throw new ExternalSignerConfigError(
-      'signerMode and signerFileSystemPath must both be set in order to run in external signing mode.'
-    );
+    throw new Error('signerMode and signerFileSystemPath must both be set in order to run in external signing mode.');
   }
 
   if (signerFileSystemPath !== undefined) {
