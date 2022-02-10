@@ -18,8 +18,11 @@ import {
   AddAnonymousProxyArgs,
   BatchArgs,
   WithdrawUnstakedArgs,
+  HexString,
 } from './iface';
 import utils from './utils';
+import { u8aToBuffer } from '@polkadot/util';
+import { EXTRINSIC_VERSION } from '@polkadot/types/extrinsic/v4/Extrinsic';
 
 export class Transaction extends BaseTransaction {
   protected _dotTransaction: UnsignedTransaction;
@@ -36,10 +39,7 @@ export class Transaction extends BaseTransaction {
   canSign({ key }: BaseKey): boolean {
     const kp = new KeyPair({ prv: key });
     const addr = kp.getAddress();
-    if (addr === this._sender) {
-      return true;
-    }
-    return false;
+    return addr === this._sender;
   }
 
   /** @inheritdoc */
@@ -64,6 +64,12 @@ export class Transaction extends BaseTransaction {
       registry: this._registry,
     });
 
+    const { signature } = this._registry
+      .createType('ExtrinsicPayload', signingPayload, {
+        version: EXTRINSIC_VERSION,
+      })
+      .sign(signingKeyPair);
+    this.signatures = [signature];
     this._signedTransaction = txHex;
   }
 
@@ -352,10 +358,28 @@ export class Transaction extends BaseTransaction {
     }
   }
 
+  constructSignedPayload(edSignature: HexString): void {
+    this._signedTransaction = construct.signedTx(this._dotTransaction, edSignature, {
+      registry: this._registry,
+      metadataRpc: this._dotTransaction.metadataRpc,
+    });
+  }
+
   setTransaction(tx: UnsignedTransaction): void {
     this._dotTransaction = tx;
   }
 
+  /** @inheritdoc **/
+  get signablePayload(): Buffer {
+    const extrinsicPayload = this._registry.createType('ExtrinsicPayload', this._dotTransaction, {
+      version: this._dotTransaction.version,
+    });
+    return u8aToBuffer(extrinsicPayload.toU8a({ method: true }));
+  }
+
+  set signatures(sig: string[]) {
+    this._signatures = sig;
+  }
   /**
    * Set the transaction type.
    *
