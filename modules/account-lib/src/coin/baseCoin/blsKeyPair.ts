@@ -40,6 +40,11 @@ export abstract class BlsKeyPair implements BaseKeyPair {
     }
   }
 
+  protected static bigIntToHex(bigint: bigint): string {
+    const hex = bigint.toString(16);
+    return '0x' + '0'.slice(0, hex.length % 2) + hex;
+  }
+
   createShares(threshold: number, participants: number): void {
     if (participants < threshold) {
       throw new Error('Participants should be greater than threshold');
@@ -48,8 +53,8 @@ export abstract class BlsKeyPair implements BaseKeyPair {
     const keySecretShares = BLS.secretShares(polynomial, participants);
     const keyPublicShare = BLS.publicShare(polynomial);
     this.keyPair = {
-      secretShares: keySecretShares.map((secretShare) => '0x' + secretShare.toString(16)),
-      publicShare: '0x' + keyPublicShare.toString(16),
+      secretShares: keySecretShares.map((secretShare) => BlsKeyPair.bigIntToHex(secretShare)),
+      publicShare: BlsKeyPair.bigIntToHex(keyPublicShare),
     };
   }
 
@@ -88,7 +93,7 @@ export abstract class BlsKeyPair implements BaseKeyPair {
   async sign(msg: Buffer): Promise<string> {
     if (this.keyPair.prv) {
       const signedMessage = await BLS.sign(msg, BigInt(this.keyPair.prv));
-      return '0x' + signedMessage.toString(16);
+      return BlsKeyPair.bigIntToHex(signedMessage);
     }
     throw new Error('Missing private key');
   }
@@ -104,7 +109,7 @@ export abstract class BlsKeyPair implements BaseKeyPair {
     try {
       const secretShares = prvKeys.map((secretShare) => BigInt(secretShare));
       const prv = BLS.mergeSecretShares(secretShares);
-      return '0x' + prv.toString(16);
+      return BlsKeyPair.bigIntToHex(prv);
     } catch (e) {
       throw new Error('Error aggregating prvkeys: ' + e);
     }
@@ -120,7 +125,7 @@ export abstract class BlsKeyPair implements BaseKeyPair {
     try {
       const secretShares = pubKeys.map((secretShare) => BigInt(secretShare));
       const commonPubKey = BLS.mergePublicShares(secretShares);
-      return '0x' + commonPubKey.toString(16);
+      return BlsKeyPair.bigIntToHex(commonPubKey);
     } catch (e) {
       throw new Error('Error aggregating pubkeys: ' + e);
     }
@@ -140,7 +145,7 @@ export abstract class BlsKeyPair implements BaseKeyPair {
   public static aggregateSignatures(signatures: { [n: number]: bigint }): string {
     try {
       const signature = BLS.mergeSignatures(signatures);
-      return '0x' + signature.toString(16);
+      return BlsKeyPair.bigIntToHex(signature);
     } catch (e) {
       throw new Error('Error aggregating signatures: ' + e);
     }
