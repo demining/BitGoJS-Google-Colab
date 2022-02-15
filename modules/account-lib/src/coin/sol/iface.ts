@@ -1,4 +1,10 @@
-import { Blockhash, Signer, StakeInstructionType, SystemInstructionType, TransactionSignature } from '@solana/web3.js';
+import {
+  AccountMeta,
+  Blockhash,
+  StakeInstructionType,
+  SystemInstructionType,
+  TransactionSignature,
+} from '@solana/web3.js';
 import { InstructionBuilderTypes } from './constants';
 import { TransactionExplanation as BaseTransactionExplanation } from '../baseCoin/iface';
 
@@ -57,7 +63,7 @@ export interface Transfer {
     amount: string;
     mint?: string;
     source?: string;
-    multiSigners?: Array<Signer>;
+    multiSigners?: Array<AccountMeta>;
   };
 }
 

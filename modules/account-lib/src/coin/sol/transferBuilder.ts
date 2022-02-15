@@ -8,14 +8,14 @@ import { InstructionBuilderTypes } from './constants';
 import { Transfer } from './iface';
 
 import assert from 'assert';
-import { Signer } from '@solana/web3.js';
+import { AccountMeta } from '@solana/web3.js';
 
 export interface SendParams {
   address: string;
   amount: string;
   mint?: string;
   source?: string;
-  multiSigners?: Array<Signer>;
+  multiSigners?: Array<AccountMeta>;
 }
 
 export class TransferBuilder extends TransactionBuilder {
