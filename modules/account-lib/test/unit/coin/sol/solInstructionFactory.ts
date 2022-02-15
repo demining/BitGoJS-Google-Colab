@@ -5,7 +5,7 @@ import { InstructionBuilderTypes, MEMO_PROGRAM_PK } from '../../../../src/coin/s
 import { InstructionParams } from '../../../../src/coin/sol/iface';
 import { PublicKey, SystemProgram, TransactionInstruction } from '@solana/web3.js';
 import BigNumber from 'bignumber.js';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+const splToken = require('@solana/spl-token');
 
 describe('Instruction Builder Tests: ', function () {
   describe('Succeed ', function () {
@@ -96,9 +96,9 @@ describe('Instruction Builder Tests: ', function () {
 
       const result = solInstructionFactory(createATAParams);
       should.deepEqual(result, [
-        Token.createAssociatedTokenAccountInstruction(
-          ASSOCIATED_TOKEN_PROGRAM_ID,
-          TOKEN_PROGRAM_ID,
+        splToken.createAssociatedTokenAccountInstruction(
+          splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+          splToken.TOKEN_PROGRAM_ID,
           new PublicKey(mintAddress),
           new PublicKey(ataAddress),
           new PublicKey(ownerAddress),

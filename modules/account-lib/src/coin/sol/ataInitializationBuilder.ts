@@ -7,7 +7,7 @@ import { InstructionBuilderTypes } from './constants';
 import { PublicKey } from '@solana/web3.js';
 import { isValidPublicKey } from './utils';
 import { BuildTransactionError } from '../baseCoin/errors';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+const splToken = require('@solana/spl-token');
 import assert from 'assert';
 
 export class AtaInitializationBuilder extends TransactionBuilder {
@@ -62,9 +62,9 @@ export class AtaInitializationBuilder extends TransactionBuilder {
     assert(this._sender, 'Sender must be set before building the transaction');
     assert(this._mint, 'Mint must be set before building the transaction');
 
-    const ataPk = await Token.getAssociatedTokenAddress(
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      TOKEN_PROGRAM_ID,
+    const ataPk = await splToken.getAssociatedTokenAddress(
+      splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+      splToken.TOKEN_PROGRAM_ID,
       new PublicKey(this._mint),
       new PublicKey(this._sender),
     );
