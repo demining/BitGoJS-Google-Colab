@@ -21,7 +21,7 @@ import {
   Transfer,
   WalletInit,
 } from './iface';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+const splToken = require('@solana/spl-token');
 
 /**
  * Construct Solana instructions from instructions params
@@ -98,16 +98,35 @@ function memoInstruction(data: Memo): TransactionInstruction[] {
  */
 function transferInstruction(data: Transfer): TransactionInstruction[] {
   const {
-    params: { fromAddress, toAddress, amount },
+    params: { fromAddress, toAddress, amount, mint, source, multiSigners },
   } = data;
   assert(fromAddress, 'Missing fromAddress param');
   assert(toAddress, 'Missing toAddress param');
   assert(amount, 'Missing toAddress param');
-  const transferInstruction = SystemProgram.transfer({
-    fromPubkey: new PublicKey(fromAddress),
-    toPubkey: new PublicKey(toAddress),
-    lamports: new BigNumber(amount).toNumber(),
-  });
+  let transferInstruction;
+  if (!mint) {
+    // native transfer
+    transferInstruction = SystemProgram.transfer({
+      fromPubkey: new PublicKey(fromAddress),
+      toPubkey: new PublicKey(toAddress),
+      lamports: new BigNumber(amount).toNumber(),
+    });
+  } else {
+    // token transfer
+    assert(mint, 'Missing mint');
+    assert(source, 'Missing source');
+    assert(multiSigners, 'Missing multiSigners');
+    transferInstruction = splToken.createTransferCheckedInstruction(
+      splToken.TOKEN_PROGRAM_ID,
+      new PublicKey(source),
+      new PublicKey(mint),
+      new PublicKey(toAddress),
+      new PublicKey(fromAddress),
+      multiSigners,
+      new BigNumber(amount).toNumber(),
+      6,
+    );
+  }
   return [transferInstruction];
 }
 
@@ -233,9 +252,9 @@ function createATAInstruction(data: AtaInit): TransactionInstruction[] {
   assert(ownerAddress, 'Missing ownerAddress param');
   assert(payerAddress, 'Missing payerAddress param');
 
-  const associatedTokenAccountInstruction = Token.createAssociatedTokenAccountInstruction(
-    ASSOCIATED_TOKEN_PROGRAM_ID,
-    TOKEN_PROGRAM_ID,
+  const associatedTokenAccountInstruction = splToken.createAssociatedTokenAccountInstruction(
+    splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+    splToken.TOKEN_PROGRAM_ID,
     new PublicKey(mintAddress),
     new PublicKey(ataAddress),
     new PublicKey(ownerAddress),

@@ -23,6 +23,7 @@ import {
   StakingWithdraw,
 } from './iface';
 import { getInstructionType } from './utils';
+const splToken = require('@solana/spl-token');
 
 /**
  * Construct instructions params from Solana instructions
@@ -113,15 +114,32 @@ function parseSendInstructions(instructions: TransactionInstruction[]): Array<No
         instructionData.push(nonce);
         break;
       case ValidInstructionTypesEnum.Transfer:
-        const transferInstruction = SystemInstruction.decodeTransfer(instruction);
-        const transfer: Transfer = {
-          type: InstructionBuilderTypes.Transfer,
-          params: {
-            fromAddress: transferInstruction.fromPubkey.toString(),
-            toAddress: transferInstruction.toPubkey.toString(),
-            amount: transferInstruction.lamports.toString(),
-          },
-        };
+        let transferInstruction = splToken.decodeTransferCheckedInstruction();
+
+        let transfer: Transfer;
+        if (transferInstruction.keys.mint) {
+          transfer = {
+            type: InstructionBuilderTypes.Transfer,
+            params: {
+              fromAddress: transferInstruction.keys.owner.toString(),
+              toAddress: transferInstruction.keys.destination.toString(),
+              amount: transferInstruction.data.amount.toString(),
+              mint: transferInstruction.keys.mint.toString(),
+              source: transferInstruction.keys.source.toString(),
+              multiSigners: transferInstruction.keys.multiSigners,
+            },
+          };
+        } else {
+          transferInstruction = SystemInstruction.decodeTransfer(instruction);
+          transfer = {
+            type: InstructionBuilderTypes.Transfer,
+            params: {
+              fromAddress: transferInstruction.fromPubkey.toString(),
+              toAddress: transferInstruction.toPubkey.toString(),
+              amount: transferInstruction.lamports.toString(),
+            },
+          };
+        }
         instructionData.push(transfer);
         break;
       default:

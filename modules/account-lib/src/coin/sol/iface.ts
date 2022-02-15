@@ -1,4 +1,4 @@
-import { Blockhash, StakeInstructionType, SystemInstructionType, TransactionSignature } from '@solana/web3.js';
+import { Blockhash, Signer, StakeInstructionType, SystemInstructionType, TransactionSignature } from '@solana/web3.js';
 import { InstructionBuilderTypes } from './constants';
 import { TransactionExplanation as BaseTransactionExplanation } from '../baseCoin/iface';
 
@@ -51,7 +51,14 @@ export interface WalletInit {
 
 export interface Transfer {
   type: InstructionBuilderTypes.Transfer;
-  params: { fromAddress: string; toAddress: string; amount: string };
+  params: {
+    fromAddress: string;
+    toAddress: string;
+    amount: string;
+    mint?: string;
+    source?: string;
+    multiSigners?: Array<Signer>;
+  };
 }
 
 export interface StakingActivate {

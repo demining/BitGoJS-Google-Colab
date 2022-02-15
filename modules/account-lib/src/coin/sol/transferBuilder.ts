@@ -8,10 +8,14 @@ import { InstructionBuilderTypes } from './constants';
 import { Transfer } from './iface';
 
 import assert from 'assert';
+import { Signer } from '@solana/web3.js';
 
 export interface SendParams {
   address: string;
   amount: string;
+  mint?: string;
+  source?: string;
+  multiSigners?: Array<Signer>;
 }
 
 export class TransferBuilder extends TransactionBuilder {
@@ -36,6 +40,9 @@ export class TransferBuilder extends TransactionBuilder {
         this.send({
           address: transferInstruction.params.toAddress,
           amount: transferInstruction.params.amount,
+          mint: transferInstruction.params.mint || undefined,
+          source: transferInstruction.params.source || undefined,
+          multiSigners: transferInstruction.params.multiSigners || undefined,
         });
       }
     }
@@ -49,13 +56,14 @@ export class TransferBuilder extends TransactionBuilder {
    * @param {string} amount - the amount sent
    * @returns {TransactionBuilder} This transaction builder
    */
-  send({ address, amount }: SendParams): this {
+  send({ address, amount, mint }: SendParams): this {
+    mint = mint || undefined;
     validateAddress(address, 'address');
     if (!amount || !isValidAmount(amount)) {
       throw new BuildTransactionError('Invalid or missing amount, got: ' + amount);
     }
 
-    this._sendParams.push({ address, amount });
+    this._sendParams.push({ address, amount, mint });
 
     return this;
   }
@@ -71,6 +79,9 @@ export class TransferBuilder extends TransactionBuilder {
           fromAddress: this._sender,
           toAddress: sendParams.address,
           amount: sendParams.amount,
+          mint: sendParams.mint,
+          source: sendParams.source,
+          multiSigners: sendParams.multiSigners,
         },
       };
     });
