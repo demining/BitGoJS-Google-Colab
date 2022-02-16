@@ -10,6 +10,7 @@ import { Material } from '../../../../../src/coin/dot/iface';
 import utils from '../../../../../src/coin/dot/utils';
 import { rawTx, accounts } from '../../../../resources/dot';
 import { register } from '../../../../../src';
+import * as bs58 from "bs58";
 
 export interface TestDotNetwork extends DotNetwork {
   genesisHash: string;
@@ -79,7 +80,7 @@ class StubTransactionBuilder extends TransactionBuilder {
 }
 
 // TODO: BG-43197
-xdescribe('Dot Transfer Builder', () => {
+describe('Dot Transfer Builder', () => {
   let builder: StubTransactionBuilder;
 
   const sender = accounts.account1;
@@ -223,6 +224,13 @@ xdescribe('Dot Transfer Builder', () => {
 
       // verify signatures are correct
       signedTx.signature.should.deepEqual(signedTransaction2.signature);
+      const rawTransaction2 = signedTransaction2.toBroadcastFormat() as string;
+      const rebuiltTransaction2 = await factory
+        .from(rawTransaction2)
+        .validity({ firstValid: 3933, maxDuration: 64 })
+        .referenceBlock('0x149799bc9602cb5cf201f3425fb8d253b2d4e61fc119dcab3249f307f594754d')
+        .build();
+      rebuiltTransaction2.signature.should.deepEqual(signedTransaction2.signature);
     });
 
     it('should add TSS signature', async () => {
@@ -233,43 +241,124 @@ xdescribe('Dot Transfer Builder', () => {
 
       const A_combine = MPC.keyCombine(A.uShare, [B.yShares[1], C.yShares[1]]);
       const B_combine = MPC.keyCombine(B.uShare, [A.yShares[2], C.yShares[2]]);
-      // const C_combine = MPC.keyCombine(C.uShare, [A.yShares[3], B.yShares[3]]);
+      const C_combine = MPC.keyCombine(C.uShare, [A.yShares[3], B.yShares[3]]);
 
-      const dotKeyPair = new KeyPair({ pub: A_combine.pShare.y });
+      const commonPub = A_combine.pShare.y;
+      const dotKeyPair = new KeyPair({ pub: commonPub });
+      const sender = dotKeyPair.getAddress();
 
-      const transferBuilder = factory
+      let transferBuilder = factory
         .getTransferBuilder()
         .amount('90034235235322')
         .to({ address: '5Ffp1wJCPu4hzVDTo7XaMLqZSvSadyUQmxWPDw74CBjECSoq' })
-        .sender({ address: dotKeyPair.getAddress() })
+        .sender({ address: sender })
         .to({ address: receiver.address })
         .validity({ firstValid: 3933, maxDuration: 64 })
         .referenceBlock('0x149799bc9602cb5cf201f3425fb8d253b2d4e61fc119dcab3249f307f594754d')
         .sequenceId({ name: 'Nonce', keyword: 'nonce', value: 200 })
         .fee({ amount: 0, type: 'tip' });
+      const unsignedTransaction = await transferBuilder.build();
+      const signablePayload = unsignedTransaction.signablePayload;
 
-      const tx = await transferBuilder.build();
-      // create a buffer out of the txHex
-      const message_buffer = tx.signablePayload;
+      // signing with 3-3 signatures
+      let A_sign_share = MPC.signShare(signablePayload, A_combine.pShare, [A_combine.jShares[2], A_combine.jShares[3]]);
+      let B_sign_share = MPC.signShare(signablePayload, B_combine.pShare, [B_combine.jShares[1], B_combine.jShares[3]]);
+      let C_sign_share = MPC.signShare(signablePayload, C_combine.pShare, [C_combine.jShares[1], C_combine.jShares[2]]);
+      let A_sign = MPC.sign(signablePayload, A_sign_share.xShare, [B_sign_share.rShares[1], C_sign_share.rShares[1]]);
+      let B_sign = MPC.sign(signablePayload, B_sign_share.xShare, [A_sign_share.rShares[2], C_sign_share.rShares[2]]);
+      let C_sign = MPC.sign(signablePayload, C_sign_share.xShare, [A_sign_share.rShares[3], B_sign_share.rShares[3]]);
+      let signature = MPC.signCombine([A_sign, B_sign, C_sign]);
+      let rawSignature = Buffer.concat([Buffer.from(signature.R, 'hex'), Buffer.from(signature.sigma, 'hex')]);
+
+      transferBuilder = factory
+        .getTransferBuilder()
+        .amount('90034235235322')
+        .to({ address: '5Ffp1wJCPu4hzVDTo7XaMLqZSvSadyUQmxWPDw74CBjECSoq' })
+        .sender({ address: sender })
+        .to({ address: receiver.address })
+        .validity({ firstValid: 3933, maxDuration: 64 })
+        .referenceBlock('0x149799bc9602cb5cf201f3425fb8d253b2d4e61fc119dcab3249f307f594754d')
+        .sequenceId({ name: 'Nonce', keyword: 'nonce', value: 200 })
+        .fee({ amount: 0, type: 'tip' });
+      transferBuilder.addSignature({ pub: dotKeyPair.getKeys().pub }, rawSignature);
+      let signedTransaction = await transferBuilder.build();
+      signedTransaction.signature.length.should.equal(1);
+      signedTransaction.signature[0].should.equal(rawSignature.toString('hex'));
 
       // signing with A and B
-      const A_sign_share = MPC.signShare(message_buffer, A_combine.pShare, [A_combine.jShares[2]]);
-      const B_sign_share = MPC.signShare(message_buffer, B_combine.pShare, [B_combine.jShares[1]]);
-      const A_sign = MPC.sign(message_buffer, A_sign_share.xShare, [B_sign_share.rShares[1]]);
-      const B_sign = MPC.sign(message_buffer, B_sign_share.xShare, [A_sign_share.rShares[2]]);
+      A_sign_share = MPC.signShare(signablePayload, A_combine.pShare, [A_combine.jShares[2]]);
+      B_sign_share = MPC.signShare(signablePayload, B_combine.pShare, [B_combine.jShares[1]]);
+      A_sign = MPC.sign(signablePayload, A_sign_share.xShare, [B_sign_share.rShares[1]]);
+      B_sign = MPC.sign(signablePayload, B_sign_share.xShare, [A_sign_share.rShares[2]]);
       // sign the message_buffer (unsigned txHex)
-      const signature = MPC.signCombine([A_sign, B_sign]);
-      const rawSignature = Buffer.concat([Buffer.from(signature.R, 'hex'), Buffer.from(signature.sigma, 'hex')]);
-
-      const rebuiltSignedTransaction = await factory
-        .from(tx.toBroadcastFormat())
-        .sender({ address: dotKeyPair.getAddress() })
+      signature = MPC.signCombine([A_sign, B_sign]);
+      rawSignature = Buffer.concat([Buffer.from(signature.R, 'hex'), Buffer.from(signature.sigma, 'hex')]);
+      transferBuilder = factory
+        .getTransferBuilder()
+        .amount('90034235235322')
+        .to({ address: '5Ffp1wJCPu4hzVDTo7XaMLqZSvSadyUQmxWPDw74CBjECSoq' })
+        .sender({ address: sender })
+        .to({ address: receiver.address })
         .validity({ firstValid: 3933, maxDuration: 64 })
-        .referenceBlock('0x149799bc9602cb5cf201f3425fb8d253b2d4e61fc119dcab3249f307f594754d');
-      rebuiltSignedTransaction.addSignature({ pub: A_combine.pShare.y }, rawSignature);
-      const signedTx = await rebuiltSignedTransaction.build();
+        .referenceBlock('0x149799bc9602cb5cf201f3425fb8d253b2d4e61fc119dcab3249f307f594754d')
+        .sequenceId({ name: 'Nonce', keyword: 'nonce', value: 200 })
+        .fee({ amount: 0, type: 'tip' });
+      transferBuilder.addSignature({ pub: dotKeyPair.getKeys().pub }, rawSignature);
+      signedTransaction = await transferBuilder.build();
+      signedTransaction.signature.length.should.equal(1);
+      signedTransaction.signature[0].should.equal(rawSignature.toString('hex'));
 
-      signedTx.signature[0].should.equal(rawSignature.toString('hex'));
+      // signing with A and C
+      A_sign_share = MPC.signShare(signablePayload, A_combine.pShare, [A_combine.jShares[3]]);
+      C_sign_share = MPC.signShare(signablePayload, C_combine.pShare, [C_combine.jShares[1]]);
+      A_sign = MPC.sign(signablePayload, A_sign_share.xShare, [C_sign_share.rShares[1]]);
+      C_sign = MPC.sign(signablePayload, C_sign_share.xShare, [A_sign_share.rShares[3]]);
+      signature = MPC.signCombine([A_sign, C_sign]);
+      rawSignature = Buffer.concat([Buffer.from(signature.R, 'hex'), Buffer.from(signature.sigma, 'hex')]);
+      transferBuilder = factory
+        .getTransferBuilder()
+        .amount('90034235235322')
+        .to({ address: '5Ffp1wJCPu4hzVDTo7XaMLqZSvSadyUQmxWPDw74CBjECSoq' })
+        .sender({ address: sender })
+        .to({ address: receiver.address })
+        .validity({ firstValid: 3933, maxDuration: 64 })
+        .referenceBlock('0x149799bc9602cb5cf201f3425fb8d253b2d4e61fc119dcab3249f307f594754d')
+        .sequenceId({ name: 'Nonce', keyword: 'nonce', value: 200 })
+        .fee({ amount: 0, type: 'tip' });
+      transferBuilder.addSignature({ pub: dotKeyPair.getKeys().pub }, rawSignature);
+      signedTransaction = await transferBuilder.build();
+      signedTransaction.signature.length.should.equal(1);
+      signedTransaction.signature[0].should.equal(rawSignature.toString('hex'));
+
+      // signing with B and C
+      B_sign_share = MPC.signShare(signablePayload, B_combine.pShare, [B_combine.jShares[3]]);
+      C_sign_share = MPC.signShare(signablePayload, C_combine.pShare, [C_combine.jShares[2]]);
+      B_sign = MPC.sign(signablePayload, B_sign_share.xShare, [C_sign_share.rShares[2]]);
+      C_sign = MPC.sign(signablePayload, C_sign_share.xShare, [B_sign_share.rShares[3]]);
+      signature = MPC.signCombine([B_sign, C_sign]);
+      rawSignature = Buffer.concat([Buffer.from(signature.R, 'hex'), Buffer.from(signature.sigma, 'hex')]);
+      transferBuilder = factory
+        .getTransferBuilder()
+        .amount('90034235235322')
+        .to({ address: '5Ffp1wJCPu4hzVDTo7XaMLqZSvSadyUQmxWPDw74CBjECSoq' })
+        .sender({ address: sender })
+        .to({ address: receiver.address })
+        .validity({ firstValid: 3933, maxDuration: 64 })
+        .referenceBlock('0x149799bc9602cb5cf201f3425fb8d253b2d4e61fc119dcab3249f307f594754d')
+        .sequenceId({ name: 'Nonce', keyword: 'nonce', value: 200 })
+        .fee({ amount: 0, type: 'tip' });
+      transferBuilder.addSignature({ pub: dotKeyPair.getKeys().pub }, rawSignature);
+      signedTransaction = await transferBuilder.build();
+      signedTransaction.signature.length.should.equal(1);
+      signedTransaction.signature[0].should.equal(rawSignature.toString('hex'));
+
+      const rebuiltTransaction = await factory
+        .from(signedTransaction.toBroadcastFormat())
+        .validity({ firstValid: 3933, maxDuration: 64 })
+        .referenceBlock('0x149799bc9602cb5cf201f3425fb8d253b2d4e61fc119dcab3249f307f594754d')
+        .build();
+
+      rebuiltTransaction.signature[0].should.equal(rawSignature.toString('hex'));
     });
   });
 });
