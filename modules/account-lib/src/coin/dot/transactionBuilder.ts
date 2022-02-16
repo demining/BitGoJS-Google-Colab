@@ -16,7 +16,7 @@ import {
   PublicKey as BasePublicKey,
 } from '../baseCoin/iface';
 import { AddressValidationError, InvalidFeeError } from './errors';
-import { CreateBaseTxInfo, Material, TxMethod} from './iface';
+import { CreateBaseTxInfo, Material, TxMethod } from './iface';
 import { KeyPair } from './keyPair';
 import { Transaction } from './transaction';
 import { BaseTransactionSchema, SignedTransactionSchema, SigningPayloadTransactionSchema } from './txnSchema';

@@ -10,7 +10,6 @@ import { Material } from '../../../../../src/coin/dot/iface';
 import utils from '../../../../../src/coin/dot/utils';
 import { rawTx, accounts } from '../../../../resources/dot';
 import { register } from '../../../../../src';
-import * as bs58 from "bs58";
 
 export interface TestDotNetwork extends DotNetwork {
   genesisHash: string;
