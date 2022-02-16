@@ -22,7 +22,6 @@ import {
 } from './iface';
 import utils from './utils';
 import { u8aToBuffer } from '@polkadot/util';
-import { EXTRINSIC_VERSION } from '@polkadot/types/extrinsic/v4/Extrinsic';
 
 export class Transaction extends BaseTransaction {
   protected _dotTransaction: UnsignedTransaction;
@@ -64,12 +63,8 @@ export class Transaction extends BaseTransaction {
       registry: this._registry,
     });
 
-    const { signature } = this._registry
-      .createType('ExtrinsicPayload', signingPayload, {
-        version: EXTRINSIC_VERSION,
-      })
-      .sign(signingKeyPair);
-    this._signatures = [signature];
+    // get signature from signed txHex generated above
+    this._signatures = [utils.recoverSignatureFromRawTx(txHex, { registry: this._registry })];
     this._signedTransaction = txHex;
   }
 

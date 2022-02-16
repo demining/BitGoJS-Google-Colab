@@ -243,13 +243,17 @@ export class Utils implements BaseUtils {
     }
   }
 
-  recoverSignatureFromRawTx(rawTx: string, options: { registry: TypeRegistry }): HexString {
+  recoverSignatureFromRawTx(rawTx: string, options: { registry: TypeRegistry }): string {
     const { registry } = options;
     const methodCall = registry.createType('Extrinsic', rawTx, {
       isSigned: true,
     });
-    const signature = u8aToHex(methodCall.signature).replace('0x', '0x00');
-    this.checkValidHex(signature);
+    let signature = u8aToHex(methodCall.signature) as string;
+
+    // remove 0x from the signature since this is how it's returned from TSS signing
+    if (signature.startsWith('0x')) {
+      signature = signature.substr(2);
+    }
     return signature;
   }
 }

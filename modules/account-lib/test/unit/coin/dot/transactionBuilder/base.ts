@@ -5,12 +5,7 @@ import should from 'should';
 import sinon from 'sinon';
 import { TransactionType } from '../../../../../src/coin/baseCoin';
 import { BaseKey } from '../../../../../src/coin/baseCoin/iface';
-import {
-  TransactionBuilder,
-  Transaction,
-  KeyPair,
-  TransactionBuilderFactory,
-} from '../../../../../src/coin/dot';
+import { TransactionBuilder, Transaction, KeyPair, TransactionBuilderFactory } from '../../../../../src/coin/dot';
 import { Material } from '../../../../../src/coin/dot/iface';
 import utils from '../../../../../src/coin/dot/utils';
 import { rawTx, accounts } from '../../../../resources/dot';
@@ -189,9 +184,6 @@ xdescribe('Dot Transfer Builder', () => {
 
   describe('add signature', () => {
     const factory = register('tdot', TransactionBuilderFactory);
-    const config = buildTestConfig();
-
-    beforeEach(() => {});
 
     it('should add a signature to transaction', async () => {
       const transferBuilder = factory
@@ -226,11 +218,7 @@ xdescribe('Dot Transfer Builder', () => {
         .referenceBlock('0x149799bc9602cb5cf201f3425fb8d253b2d4e61fc119dcab3249f307f594754d')
         .sequenceId({ name: 'Nonce', keyword: 'nonce', value: 200 })
         .fee({ amount: 0, type: 'tip' });
-      transferBuilder2.addSignature(
-        { pub: accounts.account1.publicKey },
-        // remove 0x00 from hex signature
-        Buffer.from(signature.substr(4), 'hex'),
-      );
+      transferBuilder2.addSignature({ pub: accounts.account1.publicKey }, Buffer.from(signature, 'hex'));
       const signedTransaction2 = await transferBuilder2.build();
 
       // verify signatures are correct
@@ -280,8 +268,8 @@ xdescribe('Dot Transfer Builder', () => {
         .referenceBlock('0x149799bc9602cb5cf201f3425fb8d253b2d4e61fc119dcab3249f307f594754d');
       rebuiltSignedTransaction.addSignature({ pub: A_combine.pShare.y }, rawSignature);
       const signedTx = await rebuiltSignedTransaction.build();
-      // remove 0x00. TODO: should we return a signature without 0x00 since that's what the HSM will return?
-      signedTx.signature[0].substr(4).should.equal(rawSignature.toString('hex'));
+
+      signedTx.signature[0].should.equal(rawSignature.toString('hex'));
     });
   });
 });

@@ -7,9 +7,16 @@ import BigNumber from 'bignumber.js';
 import { isValidEd25519Seed } from '../../utils/crypto';
 import { BaseTransactionBuilder, TransactionType, Interface } from '../baseCoin';
 import { BuildTransactionError, InvalidTransactionError } from '../baseCoin/errors';
-import { BaseAddress, BaseKey, FeeOptions, SequenceId, ValidityWindow , PublicKey as BasePublicKey } from '../baseCoin/iface';
+import {
+  BaseAddress,
+  BaseKey,
+  FeeOptions,
+  SequenceId,
+  ValidityWindow,
+  PublicKey as BasePublicKey,
+} from '../baseCoin/iface';
 import { AddressValidationError, InvalidFeeError } from './errors';
-import { CreateBaseTxInfo, Material, TxMethod, HexString } from './iface';
+import { CreateBaseTxInfo, Material, TxMethod} from './iface';
 import { KeyPair } from './keyPair';
 import { Transaction } from './transaction';
 import { BaseTransactionSchema, SignedTransactionSchema, SigningPayloadTransactionSchema } from './txnSchema';
@@ -212,6 +219,7 @@ export abstract class TransactionBuilder extends BaseTransactionBuilder {
     }
     // TSS signature added
     if (this.signatures?.length > 0) {
+      // if we have a signature, apply that and update this._signedTransaction
       this.transaction.constructSignedPayload(this.signatures[0].signature);
     }
     this._transaction.loadInputsAndOutputs();
