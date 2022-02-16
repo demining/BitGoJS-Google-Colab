@@ -61,6 +61,7 @@ export interface ApproveOptions {
   otp?: string;
   tx?: string;
   xprv?: string;
+  txRequestId?: string;
 }
 
 export class PendingApproval {
@@ -256,6 +257,10 @@ export class PendingApproval {
 
         this.bitgo.setRequestTracer(reqId);
         await this.populateWallet();
+
+        if (params.txRequestId) {
+          return await this.recreateAndSignTSSTransaction(params, reqId);
+        }
         return await this.recreateAndSignTransaction(params);
       }
     };
@@ -274,7 +279,7 @@ export class PendingApproval {
     };
 
     try {
-      const approvalTransaction = (await getApprovalTransaction()) as any;
+      const approvalTransaction = (await getApprovalTransaction()) as any; // check
       this.bitgo.setRequestTracer(reqId);
       return await sendApproval(approvalTransaction);
     } catch (e) {
@@ -305,6 +310,42 @@ export class PendingApproval {
    */
   async cancel(params: Record<string, never> = {}): Promise<any> {
     return await this.reject(params);
+  }
+
+  /**
+   * Recreate and sign tss transaction
+   * @param {ApproveOptions} params needed to get txs and use the walletPassphrase to tss sign
+   * @param {RequestTracer} reqId id tracer.
+   */
+  private async recreateAndSignTSSTransaction(params: ApproveOptions, reqId: RequestTracer): Promise<any> {
+    const { txRequestId, walletPassphrase } = params;
+
+    if (!this.wallet) {
+      throw new Error('Wallet not found');
+    }
+
+    if (!walletPassphrase) {
+      throw new Error('walletPassphrase not found');
+    }
+
+    if (!txRequestId) {
+      throw new Error('txRequestId not found');
+    }
+
+    // call delete all signatures shares
+    await this.bitgo
+      .del(this.baseCoin.url(`/api/v2/wallet/${this.walletId}/txrequests/${txRequestId}/signatureshares`))
+      .send({ walletId: this.walletId, txRequestId: txRequestId })
+      .result();
+
+    // after delete signatures shares get the tx without them
+    const { txRequests } = await this.wallet.getTxRequest(txRequestId);
+
+    if (txRequests.length === 0) {
+      throw new Error(`No txRequest found for id: ${txRequestId}`);
+    }
+
+    return this.wallet.signTSSTxRequest(txRequests[0], walletPassphrase, reqId);
   }
 
   /**
