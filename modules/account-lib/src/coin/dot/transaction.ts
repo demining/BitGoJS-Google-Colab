@@ -69,7 +69,7 @@ export class Transaction extends BaseTransaction {
         version: EXTRINSIC_VERSION,
       })
       .sign(signingKeyPair);
-    this.signatures = [signature];
+    this._signatures = [signature];
     this._signedTransaction = txHex;
   }
 
@@ -358,11 +358,16 @@ export class Transaction extends BaseTransaction {
     }
   }
 
-  constructSignedPayload(edSignature: HexString): void {
+  constructSignedPayload(signature: Buffer): void {
+    const edSignature = `0x00${signature.toString('hex')}` as HexString;
+
     this._signedTransaction = construct.signedTx(this._dotTransaction, edSignature, {
       registry: this._registry,
       metadataRpc: this._dotTransaction.metadataRpc,
     });
+
+    const recoveredSignature = utils.recoverSignatureFromRawTx(this._signedTransaction, { registry: this._registry });
+    this._signatures = [recoveredSignature];
   }
 
   setTransaction(tx: UnsignedTransaction): void {
@@ -377,9 +382,6 @@ export class Transaction extends BaseTransaction {
     return u8aToBuffer(extrinsicPayload.toU8a({ method: true }));
   }
 
-  set signatures(sig: string[]) {
-    this._signatures = sig;
-  }
   /**
    * Set the transaction type.
    *

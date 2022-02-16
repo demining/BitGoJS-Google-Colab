@@ -7,7 +7,7 @@ import BigNumber from 'bignumber.js';
 import { isValidEd25519Seed } from '../../utils/crypto';
 import { BaseTransactionBuilder, TransactionType, Interface } from '../baseCoin';
 import { BuildTransactionError, InvalidTransactionError } from '../baseCoin/errors';
-import { BaseAddress, BaseKey, FeeOptions, SequenceId, ValidityWindow } from '../baseCoin/iface';
+import { BaseAddress, BaseKey, FeeOptions, SequenceId, ValidityWindow , PublicKey as BasePublicKey } from '../baseCoin/iface';
 import { AddressValidationError, InvalidFeeError } from './errors';
 import { CreateBaseTxInfo, Material, TxMethod, HexString } from './iface';
 import { KeyPair } from './keyPair';
@@ -28,7 +28,7 @@ export abstract class TransactionBuilder extends BaseTransactionBuilder {
   protected _registry: TypeRegistry;
   protected _method?: TxMethod;
   protected __material?: Material;
-  protected _signatures: Interface.Signature[]; // only support single sig for now
+  protected _signatures: Interface.Signature[] = []; // only support single sig for now
 
   constructor(_coinConfig: Readonly<CoinConfig>) {
     super(_coinConfig);
@@ -210,10 +210,12 @@ export abstract class TransactionBuilder extends BaseTransactionBuilder {
     if (this._keyPair) {
       await this.transaction.sign(this._keyPair);
     }
+    // TSS signature added
     if (this.signatures?.length > 0) {
-      this.transaction.signatures = this.signatures.map((v) => v.signature.toString('hex'));
+      this.transaction.constructSignedPayload(this.signatures[0].signature);
     }
     this._transaction.loadInputsAndOutputs();
+
     return this._transaction;
   }
 
@@ -378,11 +380,14 @@ export abstract class TransactionBuilder extends BaseTransactionBuilder {
 
   // endregion
 
-  /** @inheritdoc */
-  addSignature(publicKey: unknown, signature: Buffer): void {
-    const edSignature = `0x00${signature.toString('hex')}` as HexString;
-    this.transaction.constructSignedPayload(edSignature);
-    this._signatures.push({ publicKey: this._keyPair.getKeys(), signature });
+  /**
+   * Adds a signature to the transaction.
+   *
+   * @param publicKey public key that produced the signature
+   * @param signature raw signature as a hex encoded Buffer
+   */
+  addSignature(publicKey: BasePublicKey, signature: Buffer): void {
+    this._signatures.push({ publicKey, signature });
   }
 
   get signatures(): Interface.Signature[] {

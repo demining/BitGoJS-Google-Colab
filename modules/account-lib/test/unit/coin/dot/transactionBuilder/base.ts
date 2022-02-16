@@ -5,10 +5,16 @@ import should from 'should';
 import sinon from 'sinon';
 import { TransactionType } from '../../../../../src/coin/baseCoin';
 import { BaseKey } from '../../../../../src/coin/baseCoin/iface';
-import { TransactionBuilder, Transaction, TransferBuilder, KeyPair } from '../../../../../src/coin/dot';
+import {
+  TransactionBuilder,
+  Transaction,
+  KeyPair,
+  TransactionBuilderFactory,
+} from '../../../../../src/coin/dot';
 import { Material } from '../../../../../src/coin/dot/iface';
 import utils from '../../../../../src/coin/dot/utils';
 import { rawTx, accounts } from '../../../../resources/dot';
+import { register } from '../../../../../src';
 
 export interface TestDotNetwork extends DotNetwork {
   genesisHash: string;
@@ -83,7 +89,7 @@ xdescribe('Dot Transfer Builder', () => {
 
   const sender = accounts.account1;
   const { specName, specVersion, genesisHash, chainName } = Networks.test.dot;
-  const receiver = DotResources.accounts.account2;
+  const receiver = accounts.account2;
 
   beforeEach(() => {
     const config = buildTestConfig();
@@ -182,15 +188,14 @@ xdescribe('Dot Transfer Builder', () => {
   });
 
   describe('add signature', () => {
-    let builder: TransferBuilder;
+    const factory = register('tdot', TransactionBuilderFactory);
+    const config = buildTestConfig();
 
-    beforeEach(() => {
-      const config = buildTestConfig();
-      builder = new TransferBuilder(config).material(utils.getMaterial(config));
-    });
+    beforeEach(() => {});
 
     it('should add a signature to transaction', async () => {
-      builder
+      const transferBuilder = factory
+        .getTransferBuilder()
         .amount('90034235235322')
         .sender({ address: sender.address })
         .to({ address: receiver.address })
@@ -199,14 +204,37 @@ xdescribe('Dot Transfer Builder', () => {
         .sequenceId({ name: 'Nonce', keyword: 'nonce', value: 200 })
         .fee({ amount: 0, type: 'tip' });
 
-      builder.sign({ key: DotResources.accounts.account1.secretKey });
-      const signedTx = await builder.build();
-      // const builtInSignature = signedTx.signature[0];
+      transferBuilder.sign({ key: accounts.account1.secretKey });
+      const signedTx = await transferBuilder.build();
+      const signature = signedTx.signature[0];
 
+      // verify rebuilt transaction contains signature
       const rawTransaction = signedTx.toBroadcastFormat() as string;
-      builder.from(rawTransaction);
-      const rebuiltSignedTransaction = await builder.build();
+      const rebuiltSignedTransaction = await factory
+        .from(rawTransaction)
+        .validity({ firstValid: 3933, maxDuration: 64 })
+        .referenceBlock('0x149799bc9602cb5cf201f3425fb8d253b2d4e61fc119dcab3249f307f594754d')
+        .build();
       rebuiltSignedTransaction.signature.should.deepEqual(signedTx.signature);
+
+      const transferBuilder2 = factory
+        .getTransferBuilder()
+        .amount('90034235235322')
+        .sender({ address: sender.address })
+        .to({ address: receiver.address })
+        .validity({ firstValid: 3933, maxDuration: 64 })
+        .referenceBlock('0x149799bc9602cb5cf201f3425fb8d253b2d4e61fc119dcab3249f307f594754d')
+        .sequenceId({ name: 'Nonce', keyword: 'nonce', value: 200 })
+        .fee({ amount: 0, type: 'tip' });
+      transferBuilder2.addSignature(
+        { pub: accounts.account1.publicKey },
+        // remove 0x00 from hex signature
+        Buffer.from(signature.substr(4), 'hex'),
+      );
+      const signedTransaction2 = await transferBuilder2.build();
+
+      // verify signatures are correct
+      signedTx.signature.should.deepEqual(signedTransaction2.signature);
     });
 
     it('should add TSS signature', async () => {
@@ -221,7 +249,8 @@ xdescribe('Dot Transfer Builder', () => {
 
       const dotKeyPair = new KeyPair({ pub: A_combine.pShare.y });
 
-      builder
+      const transferBuilder = factory
+        .getTransferBuilder()
         .amount('90034235235322')
         .to({ address: '5Ffp1wJCPu4hzVDTo7XaMLqZSvSadyUQmxWPDw74CBjECSoq' })
         .sender({ address: dotKeyPair.getAddress() })
@@ -231,7 +260,7 @@ xdescribe('Dot Transfer Builder', () => {
         .sequenceId({ name: 'Nonce', keyword: 'nonce', value: 200 })
         .fee({ amount: 0, type: 'tip' });
 
-      const tx = await builder.build();
+      const tx = await transferBuilder.build();
       // create a buffer out of the txHex
       const message_buffer = tx.signablePayload;
 
@@ -243,10 +272,16 @@ xdescribe('Dot Transfer Builder', () => {
       // sign the message_buffer (unsigned txHex)
       const signature = MPC.signCombine([A_sign, B_sign]);
       const rawSignature = Buffer.concat([Buffer.from(signature.R, 'hex'), Buffer.from(signature.sigma, 'hex')]);
-      builder.from(tx.toBroadcastFormat());
-      builder.addSignature(A_combine.pShare.y, rawSignature);
-      // signature can be verified
-      dotKeyPair.verifySignature(message_buffer, rawSignature).should.be.true();
+
+      const rebuiltSignedTransaction = await factory
+        .from(tx.toBroadcastFormat())
+        .sender({ address: dotKeyPair.getAddress() })
+        .validity({ firstValid: 3933, maxDuration: 64 })
+        .referenceBlock('0x149799bc9602cb5cf201f3425fb8d253b2d4e61fc119dcab3249f307f594754d');
+      rebuiltSignedTransaction.addSignature({ pub: A_combine.pShare.y }, rawSignature);
+      const signedTx = await rebuiltSignedTransaction.build();
+      // remove 0x00. TODO: should we return a signature without 0x00 since that's what the HSM will return?
+      signedTx.signature[0].substr(4).should.equal(rawSignature.toString('hex'));
     });
   });
 });
