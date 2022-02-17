@@ -35,6 +35,9 @@ export abstract class TransactionBuilder extends BaseTransactionBuilder {
   protected _registry: TypeRegistry;
   protected _method?: TxMethod;
   protected __material?: Material;
+  // signatures that will be used to sign a transaction when building
+  // not the same as the _signatures in transaction which is the signature in
+  // string hex format used for validation after we call .build()
   protected _signatures: Interface.Signature[] = []; // only support single sig for now
 
   constructor(_coinConfig: Readonly<CoinConfig>) {
@@ -217,7 +220,6 @@ export abstract class TransactionBuilder extends BaseTransactionBuilder {
     if (this._keyPair) {
       await this.transaction.sign(this._keyPair);
     }
-    // TSS signature added
     if (this.signatures?.length > 0) {
       // if we have a signature, apply that and update this._signedTransaction
       this.transaction.constructSignedPayload(this.signatures[0].signature);

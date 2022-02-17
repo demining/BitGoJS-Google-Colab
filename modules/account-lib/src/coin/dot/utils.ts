@@ -243,6 +243,12 @@ export class Utils implements BaseUtils {
     }
   }
 
+  /**
+   * extracts and returns the signature in hex format given a raw signed transaction
+   *
+   * @param {string} rawTx signed raw transaction
+   * @param options registry dot registry used to retrieve the signature
+   */
   recoverSignatureFromRawTx(rawTx: string, options: { registry: TypeRegistry }): string {
     const { registry } = options;
     const methodCall = registry.createType('Extrinsic', rawTx, {

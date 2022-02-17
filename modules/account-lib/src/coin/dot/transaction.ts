@@ -353,7 +353,16 @@ export class Transaction extends BaseTransaction {
     }
   }
 
+  /**
+   * Constructs a signed payload using construct.signTx
+   * This method will be called during the build step if a TSS signature
+   * is added and will set the signTransaction which is the txHex that will be broadcasted
+   * As well as add the signature used to sign to the signature array in hex format
+   *
+   * @param {Buffer} signature The signature to be added to a dot transaction
+   */
   constructSignedPayload(signature: Buffer): void {
+    // 0x00 means its an ED25519 signature
     const edSignature = `0x00${signature.toString('hex')}` as HexString;
 
     this._signedTransaction = construct.signedTx(this._dotTransaction, edSignature, {
