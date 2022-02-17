@@ -218,7 +218,7 @@ export abstract class TransactionBuilder extends BaseTransactionBuilder {
     this.transaction.registry(this._registry);
     this.transaction.chainName(this._material.chainName);
     if (this._keyPair) {
-      await this.transaction.sign(this._keyPair);
+      this.transaction.sign(this._keyPair);
     }
     if (this.signatures?.length > 0) {
       // if we have a signature, apply that and update this._signedTransaction
