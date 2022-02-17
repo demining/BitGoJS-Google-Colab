@@ -1,7 +1,7 @@
 import { BaseCoin as CoinConfig } from '@bitgo/statics';
 import { BaseTransactionBuilderFactory } from '../baseCoin';
 import { NotImplementedError, NotSupported } from '../baseCoin/errors';
-import { decode, getRegistry } from '@substrate/txwrapper-polkadot';
+import { decode } from '@substrate/txwrapper-polkadot';
 import { TransactionBuilder } from './transactionBuilder';
 import { TransferBuilder } from './transferBuilder';
 import { AddressInitializationBuilder } from './addressInitializationBuilder';
@@ -63,13 +63,8 @@ export class TransactionBuilderFactory extends BaseTransactionBuilderFactory {
   }
 
   private getBuilder(rawTxn: string): TransactionBuilder {
-    const registry = getRegistry({
-      chainName: this._material.chainName,
-      specName: this._material.specName,
-      specVersion: this._material.specVersion,
-      metadataRpc: this._material.metadata,
-    });
-
+    const SingletonRegistry = require('./singletonRegistry');
+    const registry = SingletonRegistry.getInstance(this._material);
     const decodedTxn = decode(rawTxn, {
       metadataRpc: this._material.metadata,
       registry: registry,
