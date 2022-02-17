@@ -361,8 +361,7 @@ export class Transaction extends BaseTransaction {
       metadataRpc: this._dotTransaction.metadataRpc,
     });
 
-    const recoveredSignature = utils.recoverSignatureFromRawTx(this._signedTransaction, { registry: this._registry });
-    this._signatures = [recoveredSignature];
+    this._signatures = [signature.toString('hex')];
   }
 
   setTransaction(tx: UnsignedTransaction): void {
